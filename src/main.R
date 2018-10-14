@@ -1,0 +1,51 @@
+main<-function()
+{
+  set.seed(1)
+  
+  data<-read.csv(file="./bdata.20130222.mhci.txt",sep="\t")
+  data<-subset(data,peptide_length==9)
+  data$mhc<-as.character(data$mhc)
+  data<-subset(data,mhc!='HLA-A3/11')
+  binders_data<-subset(data,meas<=500)
+  binders_data['binder']=1
+  non_binders_data<-subset(data,meas>500)
+  non_binders_data['binder']=0
+  data2<-rbind(binders_data,non_binders_data)
+  data_index<-createDataPartition(y=data2$binder,p=0.80,list=FALSE)
+  data_train<-data2[data_index,]
+  data_test<-data2[-data_index,]
+  #data2 to be sent in classifier
+  source('./src/matrix.R')
+  source('./src/predict_matrix.R')
+  #create_matrix(data_train)
+  dimension<-dim(data_test)
+  limit<-dimension[1]
+  tp<-0
+  fp<-0
+  tn<-0
+  fn<-0
+  for(i in 1:limit)
+  {
+    tru<-data_test[i,7]
+    tryCatch({
+      pr<-pred(data_test[i,2],data[i,4])
+      if(tru==1)
+      {
+        if(pr==1)
+         tp<-tp+1
+        else
+          fn<-fn+1
+      }
+      if(tru==0)
+      {
+        if(pr==1)
+          fp<-fp+1
+        else
+          tn<-tn+1
+      }
+    },error=function(e){}
+    )  
+  }
+  matr<-matrix(c(tp,fp,tn,fn),nrow = 2)
+  print(matr)
+}

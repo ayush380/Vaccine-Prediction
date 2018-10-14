@@ -1,0 +1,56 @@
+smm_test<-function(mhc2)
+{
+  set.seed(1)
+  library('caret')
+  data<-read.csv(file="./bdata.20130222.mhci.txt",sep="\t")
+  data<-subset(data,peptide_length==9)
+  data$mhc<-as.character(data$mhc)
+  data<-subset(data,mhc!='HLA-A3/11')
+  binders_data<-subset(data,meas<=500)
+  binders_data['binder']=1
+  non_binders_data<-subset(data,meas>500)
+  non_binders_data['binder']=0
+  data2<-rbind(binders_data,non_binders_data)
+  data2<-subset(data2,mhc==mhc2)
+  source('./src/pred_test.R')
+ 
+  dimension<-dim(data2)
+  limit<-dimension[1]
+  tp<-0
+  fp<-0
+  tn<-0
+  fn<-0
+  for(i in 1:limit)
+  {
+   #print(paste('testing',i))
+    tru<-data2[i,7]
+    tryCatch({
+      seque<-data[i,4]
+      res_smm<-bind(x=seque,mhc=mhc2)
+      #res_smm<-as.character(res_smm$peptide)
+      #res_smm<-res_smm[1]
+      #print(res_smm)
+      if(tru==1)
+      {
+        if(length(res_smm)==1)
+          tp<-tp+1
+        else
+          fn<-fn+1
+      }
+      if(tru==0)
+      {
+        if(length(res_smm)==1)
+          fp<-fp+1
+        else
+          tn<-tn+1
+      }
+    },error=function(e){}
+    )  
+  }
+  matr<-matrix(c(tp,fp,tn,fn),nrow = 2)
+  accu<-(tp+tn)/(tp+tn+fn+fp)
+  ret<-accu*100
+  #print(matr)
+  #print(ret)
+  return(ret)
+  }
